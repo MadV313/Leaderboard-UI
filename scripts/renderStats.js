@@ -8,7 +8,7 @@ async function loadLeaderboardData() {
   const coinBank = await coinsRes.json();
 
   renderTopWinLoss(playerStats);
-  renderTopCoins(coinBank);
+  renderTopCoins(coinBank, playerStats);
 }
 
 function renderTopWinLoss(data) {
@@ -38,22 +38,24 @@ function renderTopWinLoss(data) {
   });
 }
 
-function renderTopCoins(data) {
-  const leaderboard = Object.entries(data)
-    .map(([id, coins]) => ({ userId: id, coins }))
+function renderTopCoins(coinBank, playerStats) {
+  const leaderboard = Object.entries(coinBank)
+    .map(([id, coins]) => ({
+      username: playerStats[id]?.discordName || `User ${id}`,
+      coins
+    }))
     .sort((a, b) => b.coins - a.coins)
     .slice(0, 3);
 
   const tbody = document.querySelector('#coin-body');
   tbody.innerHTML = '';
 
-  leaderboard.forEach((entry, i) => {
-    const playerName = entry.userId; // Fallback to ID; optional: enrich with names later
+  leaderboard.forEach((player, i) => {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${i + 1}</td>
-      <td>${playerName}</td>
-      <td>${entry.coins}</td>
+      <td>${player.username}</td>
+      <td>${player.coins}</td>
     `;
     tbody.appendChild(row);
   });
