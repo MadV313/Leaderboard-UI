@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Player Stats & Leaderboard</title>
+  <link rel="stylesheet" href="styles/stats.css" />
+</head>
+<body>
+  <div id="background"></div>
+  <div class="container">
+    <h1 class="title">Global Leaderboard</h1>
+
+    <div class="stats-section">
+      <h2>Top 10 Win/Loss Ratios</h2>
+      <ul id="leaderboard" class="leaderboard-list"></ul>
+    </div>
+
+    <div class="stats-section">
+      <h2>Top 3 Coin Holders</h2>
+      <ul id="coinLeaders" class="leaderboard-list"></ul>
+    </div>
+
+    <button class="hub-button" onclick="window.location.href='https://your-username.github.io/Hub-UI/'">Return to Hub</button>
+  </div>
+
+  <!-- Modal -->
+  <div id="playerModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="modalTitle">Player Stats</h2>
+      <p id="modalWins"></p>
+      <p id="modalLosses"></p>
+      <p id="modalRatio"></p>
+      <p id="modalCoins"></p>
+    </div>
+  </div>
+
+  <script type="module" src="scripts/renderStats.js"></script>
+</body>
+</html>
