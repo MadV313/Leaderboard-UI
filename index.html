@@ -1,1 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SV13 Stats & Leaderboard</title>
+  <link rel="stylesheet" href="styles/leaderboard.css" />
+</head>
+<body>
+  <div id="background"></div>
 
+  <div class="leaderboard-container">
+    <h1>Player Stats & Global Leaderboard</h1>
+
+    <section class="section">
+      <h2>Top 10 Win/Loss Ratios</h2>
+      <table class="leaderboard-table" id="wlTable">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Wins</th>
+            <th>Losses</th>
+            <th>W/L Ratio</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Top 3 Coin Holdings</h2>
+      <table class="leaderboard-table" id="coinTable">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Coins</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <div class="button-wrap">
+      <a href="https://your-username.github.io/Duel-Hub-UI/" class="return-button">Return to SV13 Hub</a>
+    </div>
+  </div>
+
+  <script type="module" src="scripts/renderStats.js"></script>
+</body>
+</html>
