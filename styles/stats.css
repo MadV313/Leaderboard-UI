@@ -37,6 +37,8 @@ body {
 .container {
   text-align: center;
   padding: 40px 20px;
+  width: 100%;
+  max-width: 960px;
 }
 
 h1 {
@@ -111,11 +113,12 @@ h2 {
   color: white;
   text-decoration: none;
   font-size: 16px;
-  transition: background 0.3s;
+  transition: background 0.3s, transform 0.2s;
 }
 
 .back-button:hover {
   background-color: #3cb371;
+  transform: scale(1.05);
 }
 
 /* Modal */
@@ -159,12 +162,43 @@ h2 {
   color: white;
 }
 
+/* 📱 Mobile-Specific Adjustments */
 @media (max-width: 768px) {
   body {
     background-size: 100% 100% !important;
     background-position: center center !important;
-    background-attachment: fixed !important;
     overflow: hidden;
   }
-}
 
+  h1 {
+    font-size: 28px;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
+
+  .container {
+    padding: 30px 10px;
+  }
+
+  .leaderboard-list li {
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  .stat {
+    width: 120px;
+  }
+
+  .back-button {
+    font-size: 16px;
+    padding: 10px 20px;
+  }
+
+  .modal-content {
+    width: 90%;
+    padding: 20px;
+  }
+}
