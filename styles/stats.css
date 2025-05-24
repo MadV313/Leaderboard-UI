@@ -22,7 +22,7 @@ body {
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  background: url('../images/effects/snowfall.gif') center center / cover no-repeat;
+  background: url('..images/effects/snowfall.gif') center center / cover no-repeat;
   opacity: 0.3;
 }
 
