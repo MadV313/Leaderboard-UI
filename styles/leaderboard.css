@@ -94,9 +94,12 @@ h2 {
   transition: background 0.3s, transform 0.2s;
 }
 
-.return-button:hover {
-  background-color: #3cb371;
-  transform: scale(1.05);
+.return-button:hover,
+.back-button:hover {
+  border: 2px solid #00ffff;
+  transform: scale(1.02);
+  box-shadow: 0 0 10px #00ffff;
+  background-color: transparent;
 }
 
 .button-wrap {
