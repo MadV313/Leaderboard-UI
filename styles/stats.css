@@ -107,9 +107,10 @@ h2 {
 }
 
 .back-button {
+  display: inline-block;
   padding: 10px 20px;
   background-color: #008080; /* Teal */
-  border: none;
+  border: 2px solid white;
   border-radius: 4px;
   color: white;
   text-decoration: none;
