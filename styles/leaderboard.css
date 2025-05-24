@@ -99,8 +99,8 @@ h2 {
 .back-button:hover {
   border: 2px solid #00ffff;
   transform: scale(1.02);
-  box-shadow: 0 0 10px #00ffff;
-  background-color: transparent;
+  box-shadow: 0 0 15px #00ffff, 0 0 5px #00ffff inset;
+  background-color: #004d4d; /* Slight teal dark glow */
 }
 
 .button-wrap {
@@ -138,5 +138,35 @@ h2 {
     font-size: 14px;
     padding: 10px 18px;
     margin-bottom: 15px;
+  }
+}
+
+/* 🎯 Desktop-Only: Tighter layout for full screen fit */
+@media (min-width: 768px) {
+  .container {
+    padding: 20px 10px;
+  }
+
+  h1 {
+    font-size: 32px;
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .leaderboard-section {
+    margin-bottom: 24px;
+  }
+
+  .leaderboard-list li {
+    padding: 8px 16px;
+    font-size: 16px;
+  }
+
+  .back-button {
+    margin-top: 20px;
   }
 }
