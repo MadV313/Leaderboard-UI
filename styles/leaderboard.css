@@ -92,6 +92,7 @@ h2 {
   color: white;
   text-decoration: none;
   border-radius: 6px;
+  border: 2px solid white;
   transition: background 0.3s, transform 0.2s;
 }
 
