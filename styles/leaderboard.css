@@ -107,7 +107,7 @@ h2 {
 @media (max-width: 767px) {
   .leaderboard-container {
     padding: 10px 10px 20px;
-    margin-top: -20px;
+    margin-top: 40px; /* shifted from -20px to 40px to lower content */
   }
 
   h1 {
@@ -136,4 +136,3 @@ h2 {
     margin-bottom: 15px;
   }
 }
-
