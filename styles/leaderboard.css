@@ -105,48 +105,35 @@ h2 {
 
 /* ✅ Unified mobile adjustments */
 @media (max-width: 767px) {
-  body {
-    background-size: 100% 100% !important;
-    background-position: center center !important;
-    background-attachment: fixed !important;
-    overflow: hidden;
-  }
-
   .leaderboard-container {
-    max-width: 95%;
-    padding: 20px 10px;
-    overflow-y: auto;
-    flex: 1;
+    padding: 10px 10px 20px;
+    margin-top: -20px;
   }
 
   h1 {
-    font-size: 26px;
-    line-height: 1.2;
-    margin-bottom: 20px;
+    font-size: 24px;
+    margin-bottom: 12px;
   }
 
   h2 {
-    font-size: 20px;
-    margin-bottom: 12px;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .section {
+    margin-bottom: 20px;
   }
 
   .leaderboard-table th,
   .leaderboard-table td {
-    padding: 6px;
+    padding: 6px 8px;
     font-size: 13px;
   }
 
-  .leaderboard-table {
-    font-size: 14px;
-    overflow-x: auto;
-  }
-
   .return-button {
-    font-size: 16px;
+    font-size: 14px;
     padding: 10px 18px;
-    margin-top: 20px;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
+    margin-bottom: 15px;
   }
 }
+
