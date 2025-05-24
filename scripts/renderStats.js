@@ -1,5 +1,18 @@
 // scripts/renderStats.js
 
+// 📱 Ensure proper layout reset when returning from history navigation (especially on mobile)
+window.addEventListener("pageshow", () => {
+  window.scrollTo(0, 0);
+  document.body.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+
+  // Optional: force visual repaint
+  document.body.style.display = "none";
+  requestAnimationFrame(() => {
+    document.body.style.display = "";
+  });
+});
+
 fetch('data/player_data.json')
   .then(res => res.json())
   .then(data => {
