@@ -101,3 +101,12 @@ h2 {
 .button-wrap {
   margin-top: 40px;
 }
+
+@media (max-width: 768px) {
+  body {
+    background-size: 100% 100% !important;
+    background-position: center center !important;
+    background-attachment: fixed !important;
+    overflow: hidden;
+  }
+}
