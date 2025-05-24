@@ -1,4 +1,7 @@
-body {
+/* Fullscreen baseline to prevent layout shift */
+html, body {
+  height: 100%;
+  overflow: hidden;
   margin: 0;
   padding: 0;
   font-family: Arial, sans-serif;
@@ -6,8 +9,6 @@ body {
   background-size: contain;
   background-color: black;
   color: #f0f0f0;
-  height: 100vh;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -110,7 +111,7 @@ h2 {
 @media (max-width: 767px) {
   .leaderboard-container {
     padding: 10px 10px 20px;
-    margin-top: 40px; /* shifted from -20px to 40px to lower content */
+    margin-top: 40px;
   }
 
   h1 {
