@@ -2,38 +2,50 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Stats & Leaderboard</title>
-  <link rel="stylesheet" href="styles/stats.css" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SV13 Stats & Leaderboard</title>
+  <link rel="stylesheet" href="styles/leaderboard.css" />
 </head>
 <body>
   <div class="snow"></div>
   <div id="background"></div>
 
-  <div class="container">
-    <h1>PLAYER STATS & GLOBAL LEADERBOARD</h1>
+<div class="leaderboard-container" style="transform: scale(0.9); transform-origin: top center;">
+    <h1>Global Leaderboard</h1>
 
-    <div class="leaderboard-section">
-      <h2>Top 10: Win/Loss Ratio</h2>
-      <ul id="wlLeaderboard" class="leaderboard-list"></ul>
-    </div>
+    <section class="section">
+      <h2>Top 10 Win/Loss Ratios</h2>
+      <table class="leaderboard-table" id="wlTable">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Wins</th>
+            <th>Losses</th>
+            <th>W/L Ratio</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
 
-    <div class="leaderboard-section">
-      <h2>Top 3: Coin Banks</h2>
-      <ul id="coinLeaderboard" class="leaderboard-list"></ul>
-    </div>
+    <section class="section">
+      <h2>Top 3 Coin Holdings</h2>
+      <table class="leaderboard-table" id="coinTable">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Coins</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
 
     <div class="button-wrap">
       <a href="https://madv313.github.io/Player-Stats-UI/" class="return-button">📊 View Your Player Stats</a>
       <a href="https://madv313.github.io/HUB-UI/" class="return-button">← Return to Hub</a>
-    </div>
-  </div>
-
-  <!-- Modal -->
-  <div id="playerModal" class="modal">
-    <div class="modal-content">
-      <span id="modalClose" class="modal-close">&times;</span>
-      <div id="modalBody"></div>
     </div>
   </div>
 
