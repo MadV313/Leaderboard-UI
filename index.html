@@ -5,11 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SV13 Stats & Leaderboard</title>
   <link rel="stylesheet" href="styles/leaderboard.css" />
+
+  <!-- Make token/api available to scripts and ensure links carry them -->
+  <script>
+    (function () {
+      const qs = new URLSearchParams(location.search);
+      const tokenFromUrl = qs.get('token') || '';
+      const apiFromUrl = (qs.get('api') || '').replace(/\/+$/, '');
+
+      // Persist token so other UIs (and reloads) can reuse it
+      let token = tokenFromUrl;
+      try {
+        if (!token) token = localStorage.getItem('sv13.token') || '';
+        if (tokenFromUrl) localStorage.setItem('sv13.token', tokenFromUrl);
+      } catch {}
+
+      // Expose globals for scripts/renderStats.js (or any other module)
+      window.PLAYER_TOKEN = token;
+      window.API_BASE = apiFromUrl || '/api';
+
+      // Helper: append token/api to hrefs
+      function withParams(href) {
+        try {
+          const u = new URL(href, location.origin);
+          if (token) u.searchParams.set('token', token);
+          if (apiFromUrl) u.searchParams.set('api', apiFromUrl);
+          return u.toString();
+        } catch {
+          const sep = href.includes('?') ? '&' : '?';
+          const parts = [];
+          if (token) parts.push('token=' + encodeURIComponent(token));
+          if (apiFromUrl) parts.push('api=' + encodeURIComponent(apiFromUrl));
+          return parts.length ? href + sep + parts.join('&') : href;
+        }
+      }
+
+      // Defer until DOM is ready to rewrite outbound links
+      document.addEventListener('DOMContentLoaded', () => {
+        ['btn-hub', 'btn-stats'].forEach((id) => {
+          const a = document.getElementById(id);
+          if (a && a.href) a.href = withParams(a.href);
+        });
+      });
+    })();
+  </script>
+
+  <style>
+    /* tiny style just for the audio toggle */
+    .audio-toggle {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.65);
+      color: #fff;
+      border: 1px solid #00ffff;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      backdrop-filter: blur(2px);
+    }
+    .audio-toggle:hover { box-shadow: 0 0 10px #00ffff; }
+  </style>
 </head>
 <body>
   <!-- 🔁 Top-right Return to Hub -->
   <div class="top-right-button">
-    <a href="https://madv313.github.io/HUB-UI/" class="return-button">← Return to Hub</a>
+    <a href="https://madv313.github.io/HUB-UI/" class="return-button" id="btn-hub">← Return to Hub</a>
   </div>
 
   <!-- ❄️ Snowfall + BG -->
@@ -53,11 +117,81 @@
 
       <!-- 📊 Bottom Player Stats Button -->
       <div class="button-wrap">
-        <a href="https://madv313.github.io/Player-Stats-UI/" class="return-button">📊 View Your Player Stats</a>
+        <a href="https://madv313.github.io/Player-Stats-UI/" class="return-button" id="btn-stats">📊 View Your Player Stats</a>
       </div>
     </div>
   </div>
 
+  <!-- 🔊 Background music (plays automatically where allowed; otherwise on first tap/click) -->
+  <audio
+    id="leaderboard-bgm"
+    src="audio/bg/Follow the Trail.mp3"
+    autoplay
+    muted
+    playsinline
+    loop
+    preload="auto"></audio>
+  <button id="audioToggle" class="audio-toggle" aria-label="Mute background music">🔇</button>
+
   <script type="module" src="scripts/renderStats.js"></script>
+
+  <!-- Autoplay-safe background music controller -->
+  <script>
+    (function setupLeaderboardMusic() {
+      const audio = document.getElementById('leaderboard-bgm');
+      const btn   = document.getElementById('audioToggle');
+      if (!audio || !btn) return;
+
+      const STORE_KEY = 'sv13_leaderboard_bgm.muted';
+
+      // Restore saved preference (true/false as string)
+      try {
+        const saved = localStorage.getItem(STORE_KEY);
+        if (saved !== null) audio.muted = (saved === 'true');
+      } catch {}
+
+      updateBtn();
+
+      // Best-effort autoplay (allowed because element can start muted)
+      audio.play().catch(() => { /* will unlock on first user gesture */ });
+
+      // On first user gesture: ensure playback; if user hasn't explicitly chosen mute, unmute.
+      const unlock = () => {
+        audio.play().catch(() => {});
+        try {
+          if (localStorage.getItem(STORE_KEY) !== 'true') {
+            audio.muted = false;
+            updateBtn();
+          }
+        } catch {}
+        cleanupUnlock();
+      };
+      function cleanupUnlock() {
+        window.removeEventListener('pointerdown', unlock, opt);
+        window.removeEventListener('keydown', unlock);
+        document.removeEventListener('visibilitychange', vis);
+      }
+      const opt = { passive: true };
+      window.addEventListener('pointerdown', unlock, opt);
+      window.addEventListener('keydown', unlock);
+
+      // If the tab regains visibility, retry play (Safari quirks)
+      const vis = () => { if (!document.hidden) audio.play().catch(() => {}); };
+      document.addEventListener('visibilitychange', vis);
+
+      // Manual toggle
+      btn.addEventListener('click', () => {
+        audio.muted = !audio.muted;
+        try { localStorage.setItem(STORE_KEY, String(audio.muted)); } catch {}
+        updateBtn();
+        audio.play().catch(() => {});
+      });
+
+      function updateBtn() {
+        btn.textContent = audio.muted ? '🔇' : '🔊';
+        btn.setAttribute('aria-label', audio.muted ? 'Play background music' : 'Mute background music');
+      }
+    })();
+  </script>
 </body>
 </html>
