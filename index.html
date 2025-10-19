@@ -10,40 +10,48 @@
   <script>
     (function () {
       const qs = new URLSearchParams(location.search);
-      const tokenFromUrl = qs.get('token') || '';
-      const apiFromUrl = (qs.get('api') || '').replace(/\/+$/, '');
+      const tokenFromUrl = (qs.get('token') || '').trim();
+      const apiFromUrlRaw = (qs.get('api') || '').replace(/\/+$/, '');
 
-      // Persist token so other UIs (and reloads) can reuse it
+      // Persist + load token/api so other UIs (and reloads) can reuse them
       let token = tokenFromUrl;
+      let api   = apiFromUrlRaw;
       try {
         if (!token) token = localStorage.getItem('sv13.token') || '';
+        if (!api)   api   = (localStorage.getItem('sv13.api') || '').replace(/\/+$/, '');
         if (tokenFromUrl) localStorage.setItem('sv13.token', tokenFromUrl);
+        if (apiFromUrlRaw) localStorage.setItem('sv13.api', apiFromUrlRaw);
       } catch {}
 
       // Expose globals for scripts/renderStats.js (or any other module)
       window.PLAYER_TOKEN = token;
-      window.API_BASE = apiFromUrl || '/api';
+      window.API_BASE = api || '/api';
 
       // Helper: append token/api to hrefs
       function withParams(href) {
         try {
           const u = new URL(href, location.origin);
           if (token) u.searchParams.set('token', token);
-          if (apiFromUrl) u.searchParams.set('api', apiFromUrl);
+          if (api)   u.searchParams.set('api', api);
           return u.toString();
         } catch {
           const sep = href.includes('?') ? '&' : '?';
           const parts = [];
           if (token) parts.push('token=' + encodeURIComponent(token));
-          if (apiFromUrl) parts.push('api=' + encodeURIComponent(apiFromUrl));
+          if (api)   parts.push('api=' + encodeURIComponent(api));
           return parts.length ? href + sep + parts.join('&') : href;
         }
       }
 
       // Defer until DOM is ready to rewrite outbound links
       document.addEventListener('DOMContentLoaded', () => {
+        // Explicit buttons
         ['btn-hub', 'btn-stats'].forEach((id) => {
           const a = document.getElementById(id);
+          if (a && a.href) a.href = withParams(a.href);
+        });
+        // Blanket-apply to any .sv13-link marked with data-pass-params
+        document.querySelectorAll('a.sv13-link[data-pass-params]').forEach(a => {
           if (a && a.href) a.href = withParams(a.href);
         });
       });
