@@ -73,7 +73,11 @@
 <body>
   <!-- 🔁 Top-right Return to Hub -->
   <div class="top-right-button">
-    <a href="https://madv313.github.io/HUB-UI/" class="return-button" id="btn-hub">← Return to Hub</a>
+    <a href="https://madv313.github.io/HUB-UI/"
+       class="return-button sv13-link"
+       data-pass-params
+       id="btn-hub"
+       rel="noopener">← Return to Hub</a>
   </div>
 
   <!-- ❄️ Snowfall + BG -->
@@ -117,7 +121,11 @@
 
       <!-- 📊 Bottom Player Stats Button -->
       <div class="button-wrap">
-        <a href="https://madv313.github.io/Player-Stats-UI/" class="return-button" id="btn-stats">📊 View Your Player Stats</a>
+        <a href="https://madv313.github.io/Player-Stats-UI/"
+           class="return-button sv13-link"
+           data-pass-params
+           id="btn-stats"
+           rel="noopener">📊 View Your Player Stats</a>
       </div>
     </div>
   </div>
@@ -133,7 +141,8 @@
     preload="auto"></audio>
   <button id="audioToggle" class="audio-toggle" aria-label="Mute background music">🔇</button>
 
-  <script type="module" src="scripts/renderStats.js"></script>
+  <!-- Your existing logic that fills wlTable/coinTable -->
+  <script type="module" src="scripts/renderStats.js" defer></script>
 
   <!-- Autoplay-safe background music controller -->
   <script>
