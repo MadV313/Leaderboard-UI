@@ -1,6 +1,24 @@
 // scripts/renderStats.js
 
-// 📱 Ensure proper layout reset when returning from history navigation (especially on mobile)
+// ───────────────────────────── Layout bootstrap ─────────────────────────────
+// Ensure the page can scroll (some themes lock height); stretch bg on desktop.
+(function ensureScrollableAndDesktopBG() {
+  // allow page scrolling universally
+  document.documentElement.style.overflowY = 'auto';
+  document.body.style.overflowY = 'auto';
+
+  // Desktop-only background behavior
+  const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+  if (isDesktop) {
+    // If the page uses a body background image, make it cover and fixed.
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    document.body.style.backgroundAttachment = 'fixed';
+    document.body.style.backgroundPosition = 'center center';
+  }
+})();
+
+// 📱 Ensure proper layout reset when returning from history navigation (mobile)
 window.addEventListener("pageshow", () => {
   window.scrollTo(0, 0);
   document.body.scrollTop = 0;
@@ -50,7 +68,10 @@ function normalizePlayers(payload) {
   // If it's an object keyed by id (e.g., { "<userId>": {...} } or { players: {...} })
   const obj = payload.players || payload.data || payload;
   if (obj && typeof obj === "object") {
-    return Object.entries(obj).map(([id, p]) => ({
+    return Object.entries(obj).map(([id, p]) => ([
+      id,
+      p || {}
+    ])).map(([id, p]) => ({
       id,
       username: p.username || p.name || p.discordName || `Player ${id}`,
       wins: Number(p.wins ?? p.duelsWon ?? 0),
@@ -82,34 +103,57 @@ function mergePlayers(listA = [], listB = []) {
   return Array.from(map.values());
 }
 
-// Build URL with token (some backends may scope stats by auth)
+// Build URL with token (query form)
 const withToken = (path) => {
   const u = new URL(apiUrl(path), location.origin);
   if (TOKEN) u.searchParams.set("token", TOKEN);
   return u.toString();
 };
 
-// Try backend endpoints first (via proxy/override), then fallback to local JSON
+// Convenience for token-in-path endpoints: /me/:token/...
+const withTokenPath = (pathPrefix) => {
+  if (!TOKEN) return null;
+  return apiUrl(`${pathPrefix.replace(/\/+$/, '')}/${encodeURIComponent(TOKEN)}/stats`);
+};
+
+// Try backend endpoints first (via API_BASE), then fallback to local JSON
 async function fetchLeaderboardData() {
-  // 1) Single “combined” endpoints (prefer these if your backend exposes one)
-  const combinedCandidates = [
-    "/leaderboard",
+  // 0) New token-aware endpoints from your meToken API (preferred)
+  //    We attempt global first, then token-scoped helpers.
+  const preferredCandidates = [
+    // Global combined leaderboards (if exposed)
     "/stats/leaderboard",
+    "/leaderboard",
     "/duel/leaderboard",
     "/players/leaderboard",
   ];
 
-  for (const path of combinedCandidates) {
+  for (const path of preferredCandidates) {
     const json = await tryJson(withToken(path));
     const players = normalizePlayers(json);
     if (players.length) return players;
   }
 
-  // 2) Split endpoints: W/L list and Coins list (merge them)
+  // Sometimes backends only expose token-scoped stats; we can still extract
+  // coins for the caller and combine with global lists below.
+  let selfStats = null;
+  const tokenScoped = [
+    withTokenPath("/me"),              // /me/:token/stats
+    withToken("/me/stats"),            // /me/stats?token=...
+    withToken("/players/me/stats"),    // alt
+  ].filter(Boolean);
+
+  for (const url of tokenScoped) {
+    const json = await tryJson(url);
+    if (json) { selfStats = json; break; }
+  }
+
+  // 1) Split endpoints: W/L list and Coins list (merge them)
   const wlCandidates = [
     "/leaderboard/winloss",
     "/stats/winloss",
     "/players/winloss",
+    "/duels/winloss"
   ];
   const coinCandidates = [
     "/leaderboard/coins",
@@ -132,11 +176,31 @@ async function fetchLeaderboardData() {
     if (arr.length) { coin = arr; break; }
   }
 
+  // If we only have self stats with coins, inject them so the caller at least appears.
+  if ((!wl.length || !coin.length) && selfStats) {
+    const me = normalizePlayers([selfStats])[0];
+    if (me) {
+      if (!wl.length) wl = [me];
+      if (!coin.length) coin = [me];
+    }
+  }
+
   if (wl.length || coin.length) {
     return mergePlayers(wl, coin);
   }
 
-  // 3) Fallback: local JSON (static)
+  // 2) Static JSON served by backend (common patterns)
+  const staticCandidates = [
+    "/data/player_data.json",
+    "/public/data/player_data.json",
+  ];
+  for (const path of staticCandidates) {
+    const json = await tryJson(apiUrl(path));
+    const arr = normalizePlayers(json);
+    if (arr.length) return arr;
+  }
+
+  // 3) Fallback: local JSON bundled in this UI (placeholder)
   const local = await tryJson("data/player_data.json");
   const localPlayers = normalizePlayers(local);
   if (localPlayers.length) return localPlayers;
