@@ -1,18 +1,29 @@
 /* Global Fix for Mobile Return Layout Shift */
 html, body {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  overflow-y: auto;                 /* ← allow scroll */
   margin: 0;
   padding: 0;
   font-family: Arial, sans-serif;
   background: url('../images/backgrounds/stats_bg.PNG') no-repeat center center fixed;
-  background-size: contain;
+  background-size: contain;         /* default for mobile/tablet */
   background-color: black;
   color: #f0f0f0;
-  display: flex;
+
+  /* remove full-screen flex lock so content can scroll naturally */
+  /* display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: center; */
+}
+
+/* Desktop-only: stretch background fully */
+@media (min-width: 1024px) {
+  body {
+    background-size: cover;         /* fill screen on PC */
+    background-attachment: fixed;
+    background-position: center center;
+  }
 }
 
 .snow {
@@ -250,4 +261,5 @@ h2 {
   margin-top: 40px;
   width: 100%;
   text-align: center;
+  padding-bottom: 40px; /* breathing room at bottom */
 }
