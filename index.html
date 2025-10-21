@@ -59,6 +59,22 @@
   </script>
 
   <style>
+    /* Enable scroll on all devices */
+    html, body {
+      overflow-y: auto !important;
+      height: auto !important;
+    }
+
+    /* Stretch background image on PC only */
+    @media (min-width: 1024px) {
+      body {
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center center;
+      }
+    }
+
     /* tiny style just for the audio toggle */
     .audio-toggle {
       position: fixed;
@@ -76,6 +92,14 @@
       backdrop-filter: blur(2px);
     }
     .audio-toggle:hover { box-shadow: 0 0 10px #00ffff; }
+
+    /* Ensure the bottom button is visible and centered on scroll */
+    .button-wrap {
+      padding-bottom: 40px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+    }
   </style>
 </head>
 <body>
