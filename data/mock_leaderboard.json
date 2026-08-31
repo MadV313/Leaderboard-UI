@@ -1,0 +1,14 @@
+{
+  "updatedAt": "2026-08-30T12:00:00.000Z",
+  "minimumMatches": 3,
+  "winRate": [
+    { "name": "Mock Alpha", "wins": 9, "losses": 1, "matches": 10, "winRate": 0.9, "coins": 14, "provisional": false },
+    { "name": "Mock Bravo", "wins": 6, "losses": 2, "matches": 8, "winRate": 0.75, "coins": 22, "provisional": false },
+    { "name": "Mock Charlie", "wins": 3, "losses": 2, "matches": 5, "winRate": 0.6, "coins": 7, "provisional": false }
+  ],
+  "coins": [
+    { "name": "Mock Bravo", "wins": 6, "losses": 2, "matches": 8, "winRate": 0.75, "coins": 22, "provisional": false },
+    { "name": "Mock Alpha", "wins": 9, "losses": 1, "matches": 10, "winRate": 0.9, "coins": 14, "provisional": false },
+    { "name": "Mock Charlie", "wins": 3, "losses": 2, "matches": 5, "winRate": 0.6, "coins": 7, "provisional": false }
+  ]
+}
