@@ -2,167 +2,85 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SV13 Stats & Leaderboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>SV13 TCG — Global Leaderboard</title>
   <link rel="stylesheet" href="styles/leaderboard.css" />
-
-  <!-- Make token/api available to scripts and ensure links carry them -->
-  <script>
-    (function () {
-      const qs = new URLSearchParams(location.search);
-      const tokenFromUrl = (qs.get('token') || '').trim();
-      const apiFromUrlRaw = (qs.get('api') || '').replace(/\/+$/, '');
-
-      // Persist + load token/api so other UIs (and reloads) can reuse them
-      let token = tokenFromUrl;
-      let api   = apiFromUrlRaw;
-      try {
-        if (!token) token = localStorage.getItem('sv13.token') || '';
-        if (!api)   api   = (localStorage.getItem('sv13.api') || '').replace(/\/+$/, '');
-        if (tokenFromUrl) localStorage.setItem('sv13.token', tokenFromUrl);
-        if (apiFromUrlRaw) localStorage.setItem('sv13.api', apiFromUrlRaw);
-      } catch {}
-
-      // Expose globals for scripts/renderStats.js (or any other module)
-      window.PLAYER_TOKEN = token;
-      window.API_BASE = api || '/api';
-
-      // Helper: append token/api to hrefs
-      function withParams(href) {
-        try {
-          const u = new URL(href, location.origin);
-          if (token) u.searchParams.set('token', token);
-          if (api)   u.searchParams.set('api', api);
-          return u.toString();
-        } catch {
-          const sep = href.includes('?') ? '&' : '?';
-          const parts = [];
-          if (token) parts.push('token=' + encodeURIComponent(token));
-          if (api)   parts.push('api=' + encodeURIComponent(api));
-          return parts.length ? href + sep + parts.join('&') : href;
-        }
-      }
-
-      // Defer until DOM is ready to rewrite outbound links
-      document.addEventListener('DOMContentLoaded', () => {
-        // Explicit buttons
-        ['btn-hub', 'btn-stats'].forEach((id) => {
-          const a = document.getElementById(id);
-          if (a && a.href) a.href = withParams(a.href);
-        });
-        // Blanket-apply to any .sv13-link marked with data-pass-params
-        document.querySelectorAll('a.sv13-link[data-pass-params]').forEach(a => {
-          if (a && a.href) a.href = withParams(a.href);
-        });
-      });
-    })();
-  </script>
-
-  <style>
-    /* Enable scroll on all devices */
-    html, body {
-      overflow-y: auto !important;
-      height: auto !important;
-    }
-
-    /* Stretch background image on PC only */
-    @media (min-width: 1024px) {
-      body {
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        background-position: center center;
-      }
-    }
-
-    /* tiny style just for the audio toggle */
-    .audio-toggle {
-      position: fixed;
-      left: 16px;
-      bottom: 16px;
-      z-index: 9999;
-      background: rgba(0,0,0,0.65);
-      color: #fff;
-      border: 1px solid #00ffff;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      user-select: none;
-      backdrop-filter: blur(2px);
-    }
-    .audio-toggle:hover { box-shadow: 0 0 10px #00ffff; }
-
-    /* Ensure the bottom button is visible and centered on scroll */
-    .button-wrap {
-      padding-bottom: 40px;
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-    }
-  </style>
 </head>
 <body>
-  <!-- 🔁 Top-right Return to Hub -->
-  <div class="top-right-button">
-    <a href="https://madv313.github.io/HUB-UI/"
-       class="return-button sv13-link"
-       data-pass-params
-       id="btn-hub"
-       rel="noopener">← Return to Hub</a>
-  </div>
+  <div class="snow" aria-hidden="true"></div>
 
-  <!-- ❄️ Snowfall + BG -->
-  <div class="snow"></div>
-  <div id="background"></div>
+  <main class="page-shell">
+    <section class="leaderboard-card" aria-labelledby="page-title">
+      <header class="hero">
+        <p class="eyebrow">SV13 TCG</p>
+        <h1 id="page-title">Global Leaderboard</h1>
+        <p class="subtitle">Public rankings — no player link required.</p>
+      </header>
 
-  <!-- 📊 Main Container -->
-  <div class="container">
-    <div class="leaderboard-container">
-      <h1>Global Leaderboard</h1>
-
-      <section class="section">
-        <h2>Top 10 Win/Loss Ratios</h2>
-        <table class="leaderboard-table" id="wlTable">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th>Wins</th>
-              <th>Losses</th>
-              <th>W/L Ratio</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <section class="section">
-        <h2>Top 3 Coin Holdings</h2>
-        <table class="leaderboard-table" id="coinTable">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th>Coins</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <!-- 📊 Bottom Player Stats Button -->
-      <div class="button-wrap">
-        <a href="https://madv313.github.io/Player-Stats-UI/"
-           class="return-button sv13-link"
-           data-pass-params
-           id="btn-stats"
-           rel="noopener">📊 View Your Player Stats</a>
+      <div id="statusPanel" class="status-panel" data-state="loading" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Loading live leaderboard…</span>
+        <button id="retryButton" class="small-button" type="button" hidden>Retry</button>
       </div>
-    </div>
-  </div>
 
-  <!-- 🔊 Background music (plays automatically where allowed; otherwise on first tap/click) -->
+      <section class="section" aria-labelledby="win-rate-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="win-rate-title">Top 10 Win Rates</h2>
+            <p id="qualificationText" class="section-note">Competitive PvP qualification is determined by the server.</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="leaderboard-table" id="winRateTable">
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Player</th>
+                <th scope="col">Wins</th>
+                <th scope="col">Losses</th>
+                <th scope="col">Matches</th>
+                <th scope="col">Win Rate</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="coins-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="coins-title">Top 3 Coin Holdings</h2>
+            <p class="section-note">Current authoritative coin balances.</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="leaderboard-table" id="coinTable">
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Player</th>
+                <th scope="col">Coins</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <p id="updatedText" class="updated-text">Last updated: —</p>
+
+      <nav class="action-row" aria-label="Leaderboard navigation">
+        <a id="hubButton" class="action-button" href="https://sv13tcg.com" rel="noopener">Return to HUB</a>
+        <a id="statsButton" class="action-button" href="https://stats.sv13tcg.com" rel="noopener" hidden>View Your Player Stats</a>
+      </nav>
+      <p id="statsHint" class="privacy-hint">Open <strong>/mystats</strong> in Discord when you want a private Player Stats link.</p>
+    </section>
+  </main>
+
   <audio
     id="leaderboard-bgm"
     src="audio/bg/Follow the Trail.mp3"
@@ -170,69 +88,9 @@
     muted
     playsinline
     loop
-    preload="auto"></audio>
-  <button id="audioToggle" class="audio-toggle" aria-label="Mute background music">🔇</button>
+    preload="metadata"></audio>
+  <button id="audioToggle" class="audio-toggle" type="button" aria-label="Play background music">🔇</button>
 
-  <!-- Your existing logic that fills wlTable/coinTable -->
-  <script type="module" src="scripts/renderStats.js" defer></script>
-
-  <!-- Autoplay-safe background music controller -->
-  <script>
-    (function setupLeaderboardMusic() {
-      const audio = document.getElementById('leaderboard-bgm');
-      const btn   = document.getElementById('audioToggle');
-      if (!audio || !btn) return;
-
-      const STORE_KEY = 'sv13_leaderboard_bgm.muted';
-
-      // Restore saved preference (true/false as string)
-      try {
-        const saved = localStorage.getItem(STORE_KEY);
-        if (saved !== null) audio.muted = (saved === 'true');
-      } catch {}
-
-      updateBtn();
-
-      // Best-effort autoplay (allowed because element can start muted)
-      audio.play().catch(() => { /* will unlock on first user gesture */ });
-
-      // On first user gesture: ensure playback; if user hasn't explicitly chosen mute, unmute.
-      const unlock = () => {
-        audio.play().catch(() => {});
-        try {
-          if (localStorage.getItem(STORE_KEY) !== 'true') {
-            audio.muted = false;
-            updateBtn();
-          }
-        } catch {}
-        cleanupUnlock();
-      };
-      function cleanupUnlock() {
-        window.removeEventListener('pointerdown', unlock, opt);
-        window.removeEventListener('keydown', unlock);
-        document.removeEventListener('visibilitychange', vis);
-      }
-      const opt = { passive: true };
-      window.addEventListener('pointerdown', unlock, opt);
-      window.addEventListener('keydown', unlock);
-
-      // If the tab regains visibility, retry play (Safari quirks)
-      const vis = () => { if (!document.hidden) audio.play().catch(() => {}); };
-      document.addEventListener('visibilitychange', vis);
-
-      // Manual toggle
-      btn.addEventListener('click', () => {
-        audio.muted = !audio.muted;
-        try { localStorage.setItem(STORE_KEY, String(audio.muted)); } catch {}
-        updateBtn();
-        audio.play().catch(() => {});
-      });
-
-      function updateBtn() {
-        btn.textContent = audio.muted ? '🔇' : '🔊';
-        btn.setAttribute('aria-label', audio.muted ? 'Play background music' : 'Mute background music');
-      }
-    })();
-  </script>
+  <script type="module" src="scripts/renderStats.js"></script>
 </body>
 </html>
