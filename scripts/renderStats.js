@@ -1,304 +1,231 @@
-// scripts/renderStats.js
+import {
+  API_BASE,
+  LEADERBOARD_PATH,
+  buildPlayerStatsUrl,
+  cleanToken,
+  formatUpdatedAt,
+  formatWinRate,
+  isMockMode,
+  normalizeLeaderboardPayload,
+} from './leaderboardCore.js';
 
-// ───────────────────────────── Layout bootstrap ─────────────────────────────
-// Ensure the page can scroll (some themes lock height); stretch bg on desktop.
-(function ensureScrollableAndDesktopBG() {
-  // allow page scrolling universally
-  document.documentElement.style.overflowY = 'auto';
-  document.body.style.overflowY = 'auto';
+const query = new URLSearchParams(window.location.search);
+const viewerToken = cleanToken(query.get('token'));
+const mockMode = isMockMode(window.location.search);
 
-  // Desktop-only background behavior
-  const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
-  if (isDesktop) {
-    // If the page uses a body background image, make it cover and fixed.
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundRepeat = 'no-repeat';
-    document.body.style.backgroundAttachment = 'fixed';
-    document.body.style.backgroundPosition = 'center center';
+const statusPanel = document.getElementById('statusPanel');
+const statusText = document.getElementById('statusText');
+const retryButton = document.getElementById('retryButton');
+const qualificationText = document.getElementById('qualificationText');
+const updatedText = document.getElementById('updatedText');
+const winRateBody = document.querySelector('#winRateTable tbody');
+const coinBody = document.querySelector('#coinTable tbody');
+const statsButton = document.getElementById('statsButton');
+const statsHint = document.getElementById('statsHint');
+
+let refreshInFlight = null;
+let lastRefreshStartedAt = 0;
+
+function setStatus(state, message, { retry = false } = {}) {
+  statusPanel.dataset.state = state;
+  statusText.textContent = message;
+  retryButton.hidden = !retry;
+}
+
+function clearTable(body, columns, message) {
+  body.replaceChildren();
+  const row = document.createElement('tr');
+  row.className = 'message-row';
+  const cell = document.createElement('td');
+  cell.colSpan = columns;
+  cell.textContent = message;
+  row.appendChild(cell);
+  body.appendChild(row);
+}
+
+function appendCell(row, value) {
+  const cell = document.createElement('td');
+  cell.textContent = String(value);
+  row.appendChild(cell);
+}
+
+function renderWinRateRows(rows) {
+  winRateBody.replaceChildren();
+  const top = rows.slice(0, 10);
+  if (!top.length) {
+    clearTable(winRateBody, 6, 'No qualified PvP players yet.');
+    return;
   }
-})();
 
-// 📱 Ensure proper layout reset when returning from history navigation (mobile)
-window.addEventListener("pageshow", () => {
-  window.scrollTo(0, 0);
-  document.body.scrollTop = 0;
-  document.documentElement.scrollTop = 0;
-
-  // Optional: force visual repaint
-  document.body.style.display = "none";
-  requestAnimationFrame(() => {
-    document.body.style.display = "";
+  top.forEach((player, index) => {
+    const row = document.createElement('tr');
+    appendCell(row, `#${index + 1}`);
+    appendCell(row, player.name);
+    appendCell(row, player.wins);
+    appendCell(row, player.losses);
+    appendCell(row, player.matches);
+    appendCell(row, formatWinRate(player.winRate));
+    winRateBody.appendChild(row);
   });
-});
-
-// ---- token / api (provided by index.html boot script)
-const TOKEN = (window.PLAYER_TOKEN || "").trim();
-const API_BASE = (window.API_BASE || "/api").replace(/\/+$/, "");
-
-// Compose a URL against the API base
-const apiUrl = (p = "") => `${API_BASE}${p.startsWith("/") ? p : `/${p}`}`;
-
-// Helper: safe fetch → JSON (or null)
-async function tryJson(url, opts) {
-  try {
-    const r = await fetch(url, { cache: "no-store", ...opts });
-    if (!r.ok) return null;
-    return await r.json().catch(() => null);
-  } catch {
-    return null;
-  }
 }
 
-// Normalize various possible payload shapes into a uniform array:
-// [{ id, username, wins, losses, coins }]
-function normalizePlayers(payload) {
-  if (!payload) return [];
-
-  // If it's already an array of players
-  if (Array.isArray(payload)) {
-    return payload.map((p, i) => ({
-      id: p.id || p.userId || String(i),
-      username: p.username || p.name || p.discordName || `Player ${i + 1}`,
-      wins: Number(p.wins ?? p.duelsWon ?? 0),
-      losses: Number(p.losses ?? p.duelsLost ?? 0),
-      coins: Number(p.coins ?? p.balance ?? 0),
-    }));
+function renderCoinRows(rows) {
+  coinBody.replaceChildren();
+  const top = rows.slice(0, 3);
+  if (!top.length) {
+    clearTable(coinBody, 3, 'No coin rankings are available yet.');
+    return;
   }
 
-  // If it's an object keyed by id (e.g., { "<userId>": {...} } or { players: {...} })
-  const obj = payload.players || payload.data || payload;
-  if (obj && typeof obj === "object") {
-    return Object.entries(obj).map(([id, p]) => ([
-      id,
-      p || {}
-    ])).map(([id, p]) => ({
-      id,
-      username: p.username || p.name || p.discordName || `Player ${id}`,
-      wins: Number(p.wins ?? p.duelsWon ?? 0),
-      losses: Number(p.losses ?? p.duelsLost ?? 0),
-      coins: Number(p.coins ?? p.balance ?? 0),
-    }));
-  }
-
-  return [];
-}
-
-// Merge two lists (e.g., W/L list and Coin list) by id
-function mergePlayers(listA = [], listB = []) {
-  const map = new Map();
-  const upsert = (p) => {
-    const id = String(p.id ?? p.userId ?? "");
-    if (!id) return;
-    const cur = map.get(id) || { id, username: p.username || p.name || p.discordName || `Player ${id}`, wins: 0, losses: 0, coins: 0 };
-    map.set(id, {
-      id,
-      username: p.username || p.name || p.discordName || cur.username,
-      wins: Number(p.wins ?? cur.wins ?? 0),
-      losses: Number(p.losses ?? cur.losses ?? 0),
-      coins: Number(p.coins ?? cur.coins ?? 0),
-    });
-  };
-  listA.forEach(upsert);
-  listB.forEach(upsert);
-  return Array.from(map.values());
-}
-
-// Build URL with token (query form)
-const withToken = (path) => {
-  const u = new URL(apiUrl(path), location.origin);
-  if (TOKEN) u.searchParams.set("token", TOKEN);
-  return u.toString();
-};
-
-// Convenience for token-in-path endpoints: /me/:token/...
-const withTokenPath = (pathPrefix) => {
-  if (!TOKEN) return null;
-  return apiUrl(`${pathPrefix.replace(/\/+$/, '')}/${encodeURIComponent(TOKEN)}/stats`);
-};
-
-// Try backend endpoints first (via API_BASE), then fallback to local JSON
-async function fetchLeaderboardData() {
-  // 0) New token-aware endpoints from your meToken API (preferred)
-  //    We attempt global first, then token-scoped helpers.
-  const preferredCandidates = [
-    // Global combined leaderboards (if exposed)
-    "/stats/leaderboard",
-    "/leaderboard",
-    "/duel/leaderboard",
-    "/players/leaderboard",
-  ];
-
-  for (const path of preferredCandidates) {
-    const json = await tryJson(withToken(path));
-    const players = normalizePlayers(json);
-    if (players.length) return players;
-  }
-
-  // Sometimes backends only expose token-scoped stats; we can still extract
-  // coins for the caller and combine with global lists below.
-  let selfStats = null;
-  const tokenScoped = [
-    withTokenPath("/me"),              // /me/:token/stats
-    withToken("/me/stats"),            // /me/stats?token=...
-    withToken("/players/me/stats"),    // alt
-  ].filter(Boolean);
-
-  for (const url of tokenScoped) {
-    const json = await tryJson(url);
-    if (json) { selfStats = json; break; }
-  }
-
-  // 1) Split endpoints: W/L list and Coins list (merge them)
-  const wlCandidates = [
-    "/leaderboard/winloss",
-    "/stats/winloss",
-    "/players/winloss",
-    "/duels/winloss"
-  ];
-  const coinCandidates = [
-    "/leaderboard/coins",
-    "/stats/coins",
-    "/players/coins",
-    "/bank/top",
-  ];
-
-  let wl = [];
-  for (const path of wlCandidates) {
-    const json = await tryJson(withToken(path));
-    const arr = normalizePlayers(json);
-    if (arr.length) { wl = arr; break; }
-  }
-
-  let coin = [];
-  for (const path of coinCandidates) {
-    const json = await tryJson(withToken(path));
-    const arr = normalizePlayers(json);
-    if (arr.length) { coin = arr; break; }
-  }
-
-  // If we only have self stats with coins, inject them so the caller at least appears.
-  if ((!wl.length || !coin.length) && selfStats) {
-    const me = normalizePlayers([selfStats])[0];
-    if (me) {
-      if (!wl.length) wl = [me];
-      if (!coin.length) coin = [me];
-    }
-  }
-
-  if (wl.length || coin.length) {
-    return mergePlayers(wl, coin);
-  }
-
-  // 2) Static JSON served by backend (common patterns)
-  const staticCandidates = [
-    "/data/player_data.json",
-    "/public/data/player_data.json",
-  ];
-  for (const path of staticCandidates) {
-    const json = await tryJson(apiUrl(path));
-    const arr = normalizePlayers(json);
-    if (arr.length) return arr;
-  }
-
-  // 3) Fallback: local JSON bundled in this UI (placeholder)
-  const local = await tryJson("data/player_data.json");
-  const localPlayers = normalizePlayers(local);
-  if (localPlayers.length) return localPlayers;
-
-  return [];
-}
-
-function renderTables(playersRaw) {
-  const players = playersRaw.map((p) => ({
-    ...p,
-    ratio:
-      (Number(p.wins) + Number(p.losses)) === 0
-        ? 0
-        : Number(p.wins) / (Number(p.wins) + Number(p.losses)),
-  }));
-
-  // Sort for Top 10 Win/Loss
-  const topRatio = [...players]
-    .sort((a, b) => b.ratio - a.ratio || b.wins - a.wins) // consistent tie-break
-    .slice(0, 10);
-
-  // Sort for Top 3 Coins
-  const topCoins = [...players]
-    .sort((a, b) => b.coins - a.coins || b.wins - a.wins) // tie-break
-    .slice(0, 3);
-
-  // Fill Win/Loss Table with 10 rows
-  const wlBody = document.querySelector("#wlTable tbody");
-  wlBody.innerHTML = "";
-  for (let i = 0; i < 10; i++) {
-    const row = document.createElement("tr");
-    const player = topRatio[i];
-    if (player) {
-      row.innerHTML = `
-        <td>#${i + 1}</td>
-        <td>${escapeHtml(player.username || "Unknown")}</td>
-        <td>${Number(player.wins)}</td>
-        <td>${Number(player.losses)}</td>
-        <td>${(player.ratio * 100).toFixed(1)}%</td>
-      `;
-    } else {
-      row.innerHTML = `
-        <td>#${i + 1}</td>
-        <td>—</td>
-        <td>—</td>
-        <td>—</td>
-        <td>—</td>
-      `;
-    }
-    wlBody.appendChild(row);
-  }
-
-  // Fill Coin Table with 3 rows
-  const coinBody = document.querySelector("#coinTable tbody");
-  coinBody.innerHTML = "";
-  for (let i = 0; i < 3; i++) {
-    const row = document.createElement("tr");
-    const player = topCoins[i];
-    if (player) {
-      row.innerHTML = `
-        <td>#${i + 1}</td>
-        <td>${escapeHtml(player.username || "Unknown")}</td>
-        <td>${Number(player.coins)}</td>
-      `;
-    } else {
-      row.innerHTML = `
-        <td>#${i + 1}</td>
-        <td>—</td>
-        <td>—</td>
-      `;
-    }
+  top.forEach((player, index) => {
+    const row = document.createElement('tr');
+    appendCell(row, `#${index + 1}`);
+    appendCell(row, player.name);
+    appendCell(row, player.coins);
     coinBody.appendChild(row);
+  });
+}
+
+function renderLeaderboard(data) {
+  qualificationText.textContent = data.minimumMatches > 0
+    ? `Minimum ${data.minimumMatches} competitive PvP matches required to qualify. Ties are resolved by the server.`
+    : 'No minimum competitive PvP match requirement is currently configured. Ties are resolved by the server.';
+
+  renderWinRateRows(data.winRate);
+  renderCoinRows(data.coins);
+  updatedText.textContent = `Last updated: ${formatUpdatedAt(data.updatedAt)}`;
+}
+
+async function fetchCanonicalLeaderboard() {
+  const response = await fetch(`${API_BASE}${LEADERBOARD_PATH}`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    throw new Error(`leaderboard request failed (${response.status})`);
   }
+
+  return normalizeLeaderboardPayload(await response.json());
 }
 
-// Basic HTML escape for usernames
-function escapeHtml(s) {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+async function fetchMockLeaderboard() {
+  const response = await fetch(`data/mock_leaderboard.json?ts=${Date.now()}`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) throw new Error('mock leaderboard unavailable');
+  return normalizeLeaderboardPayload(await response.json());
 }
 
-async function refreshOnce() {
+async function refreshLeaderboard() {
+  if (refreshInFlight) return refreshInFlight;
+
+  const now = Date.now();
+  if (now - lastRefreshStartedAt < 750) return;
+  lastRefreshStartedAt = now;
+
+  setStatus('loading', mockMode ? 'Loading developer mock leaderboard…' : 'Loading live leaderboard…');
+
+  refreshInFlight = (async () => {
+    try {
+      const data = mockMode
+        ? await fetchMockLeaderboard()
+        : await fetchCanonicalLeaderboard();
+
+      renderLeaderboard(data);
+      setStatus(
+        mockMode ? 'mock' : 'ok',
+        mockMode ? 'Developer mock mode — not live data.' : 'Connected to SV13 TCG API.'
+      );
+    } catch (error) {
+      console.error('[leaderboard] refresh failed:', error);
+      clearTable(winRateBody, 6, 'Leaderboard unavailable.');
+      clearTable(coinBody, 3, 'Leaderboard unavailable.');
+      qualificationText.textContent = 'Qualification rules unavailable while the leaderboard service is offline.';
+      updatedText.textContent = 'Last updated: unavailable';
+      setStatus('error', 'Leaderboard service unavailable. No demo players are being shown.', { retry: true });
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+function setupViewerNavigation() {
+  const statsUrl = buildPlayerStatsUrl(viewerToken);
+  if (!statsUrl) {
+    statsButton.hidden = true;
+    statsHint.hidden = false;
+    return;
+  }
+
+  statsButton.href = statsUrl;
+  statsButton.hidden = false;
+  statsHint.hidden = true;
+}
+
+function setupRefreshHooks() {
+  retryButton.addEventListener('click', () => refreshLeaderboard());
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshLeaderboard();
+  });
+
+  window.addEventListener('focus', () => refreshLeaderboard());
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) refreshLeaderboard();
+  });
+
+  window.setInterval(() => {
+    if (!document.hidden) refreshLeaderboard();
+  }, 60_000);
+}
+
+function setupMusic() {
+  const audio = document.getElementById('leaderboard-bgm');
+  const button = document.getElementById('audioToggle');
+  if (!audio || !button) return;
+
+  const preferenceKey = 'sv13.leaderboard.audioMuted';
+
   try {
-    const data = await fetchLeaderboardData();
-    renderTables(data);
-  } catch (err) {
-    console.error("Failed to load leaderboard stats:", err);
-    renderTables([]);
-  }
+    const saved = localStorage.getItem(preferenceKey);
+    if (saved !== null) audio.muted = saved === 'true';
+  } catch {}
+
+  const updateButton = () => {
+    button.textContent = audio.muted ? '🔇' : '🔊';
+    button.setAttribute('aria-label', audio.muted ? 'Play background music' : 'Mute background music');
+  };
+
+  const tryPlay = () => audio.play().catch(() => {});
+  updateButton();
+  tryPlay();
+
+  const unlock = () => {
+    tryPlay();
+    window.removeEventListener('pointerdown', unlock);
+    window.removeEventListener('keydown', unlock);
+  };
+  window.addEventListener('pointerdown', unlock, { passive: true });
+  window.addEventListener('keydown', unlock);
+
+  button.addEventListener('click', () => {
+    audio.muted = !audio.muted;
+    try {
+      localStorage.setItem(preferenceKey, String(audio.muted));
+    } catch {}
+    updateButton();
+    tryPlay();
+  });
 }
 
-(async function main() {
-  await refreshOnce();
-
-  // 🔄 Light auto-refresh every 60s to keep “live” feel
-  setInterval(refreshOnce, 60000);
-})();
+setupViewerNavigation();
+setupRefreshHooks();
+setupMusic();
+refreshLeaderboard();
